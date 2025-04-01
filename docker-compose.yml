@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:17
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      retries: 2
+  
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: postgres_admin
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@example.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   restart: always
+
+  migrate:
+    image: migrate/migrate
+    container_name: postgres_migrate
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations/:/migrations
+    command: ["-path", "/migrations/", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}?sslmode=disable", "up"]
+      
+  app:
+    build: .
+    container_name: web_app
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"

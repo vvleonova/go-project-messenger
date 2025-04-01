@@ -1,0 +1,34 @@
+linters:
+  enable:
+    - errcheck        # ошибки не игнорируются
+    - govet           # ошибки в коде
+    - staticcheck     # улучшенная проверка на ошибки
+    - gosimple        # упрощение кода
+    - unused          # поиск неиспользуемых переменных и функций
+    - revive          # улучшенный аналог golint
+    - gocritic        # поиск сложных и потенциально опасных конструкций
+    - gofmt           # проверка форматирования
+
+  disable:
+    - depguard        # запрет определенных зависимостей
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true  # проверка приведения типов
+    check-blank: true            # запрет игнорирования ошибок (`_ = err`)
+
+  staticcheck:
+    checks: ["all"]  # все проверки из Staticcheck
+
+run:
+  timeout: 2m  # ограничение по времени (по умолчанию 1m)
+  tests: false # не линтить файлы тестов
+
+issues:
+  exclude-rules:
+    - linters: [revive]
+      text: "package comment should be of the form"  # не проверять заголовки пакетов
+  max-issues-per-linter: 50 # ограничение количества ошибок на линтер
+
+output:
+  formats: colored-line-number  # цветной вывод с номерами строк

@@ -1,0 +1,146 @@
+package dto
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"time"
+	"unicode"
+)
+
+// структура для даты
+type Date struct {
+	time.Time
+}
+
+// структура пользователя для регистрации
+type UserSignUp struct {
+	Login     string `json:"login"`
+	Phone     string `json:"phone"`
+	BirthDate Date   `json:"birth_date"`
+	Password  string `json:"password"`
+	// Photo
+}
+
+// структура пользователя для авторизации
+type UserSignIn struct {
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+// структура пользователя для обновления
+type UserUpdate struct {
+	Login     *string `json:"login,omitempty" db:"login"`
+	BirthDate *Date   `json:"birth_date,omitempty" db:"birth_date"`
+	// Photo
+}
+
+// валидация структуры пользователя для регистрации
+func (u UserSignUp) ValidateUserSignUp() error {
+	// проверка длины логина
+	if len(u.Login) < 5 {
+		return fmt.Errorf("user login is not long enough")
+	}
+
+	// проверка номера телефона
+	if !regexp.MustCompile(`^\d{11}$`).MatchString(u.Phone) {
+		return fmt.Errorf("wrong phone number format")
+	}
+
+	// проверка возраста
+	if !u.BirthDate.Before(time.Now().AddDate(-18, 0, 0)) {
+		return fmt.Errorf("user must be older than 18")
+	}
+
+	// проверка даты рождения
+	if u.BirthDate.After(time.Now()) {
+		return fmt.Errorf("birth date can't be in future")
+	}
+
+	// проверка длины пароля
+	if len(u.Password) < 8 {
+		return fmt.Errorf("password must be at least 8 symbols")
+	}
+
+	// проверка символов пароля
+	if !regexp.MustCompile(`^[a-zA-Z0-9!_]+$`).MatchString(u.Password) {
+		return fmt.Errorf("password can contain only latin letters, numbers, ! and _")
+	}
+
+	// проверка наличия заглавных букв в пароле
+	hasUpper := false
+	for _, r := range u.Password {
+		if unicode.IsUpper(r) {
+			hasUpper = true
+			break
+		}
+	}
+	if !hasUpper {
+		return fmt.Errorf("password must contain at least one capital letter")
+	}
+
+	return nil
+}
+
+// валидация структуры пользователя для авторизации
+func (u UserSignIn) ValidateUserSignIn() error {
+	// проверка номера телефона
+	if !regexp.MustCompile(`^\d{11}$`).MatchString(u.Phone) {
+		return fmt.Errorf("wrong phone number format")
+	}
+
+	// проверка длины пароля
+	if len(u.Password) < 8 {
+		return fmt.Errorf("password must be at least 8 symbols")
+	}
+
+	// проверка символов пароля
+	if !regexp.MustCompile(`^[a-zA-Z0-9!_]+$`).MatchString(u.Password) {
+		return fmt.Errorf("password can contain only latin letters, numbers, ! and _")
+	}
+
+	// проверка наличия заглавных букв в пароле
+	hasUpper := false
+	for _, r := range u.Password {
+		if unicode.IsUpper(r) {
+			hasUpper = true
+			break
+		}
+	}
+	if !hasUpper {
+		return fmt.Errorf("password must contain at least one capital letter")
+	}
+
+	return nil
+}
+
+// валидация структуры пользователя для обновления
+func (u UserUpdate) ValidateUserUpdate() error {
+	// проверка длины логина
+	if u.Login != nil && len(*u.Login) < 5 {
+		return fmt.Errorf("user login is not long enough")
+	}
+
+	// проверка возраста
+	if u.BirthDate != nil && !u.BirthDate.Before(time.Now().AddDate(-18, 0, 0)) {
+		return fmt.Errorf("user must be older than 18")
+	}
+
+	// проверка даты рождения
+	if u.BirthDate != nil && u.BirthDate.After(time.Now()) {
+		return fmt.Errorf("birth date can't be in future")
+	}
+
+	return nil
+}
+
+// кастомный парсер JSON для Date
+func (ct *Date) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	parsedTime, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return err
+	}
+	ct.Time = parsedTime
+	return nil
+}
