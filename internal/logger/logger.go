@@ -15,18 +15,21 @@ func NewLogger() (Logger, error) {
 }
 
 // обертка для функции Error
-func (log *LoggerZap) Error(msg string, err error) {
-	log.Logger.Error(msg, zap.Error(err))
+func (log *LoggerZap) Error(msg string, err error, fields ...any) {
+	allFields := append(fields, "err", err)
+	log.Logger.Sugar().Errorw(msg, allFields...)
 }
 
 // обертка для функции Fatal
-func (log *LoggerZap) Fatal(msg string, err error) {
-	log.Logger.Fatal(msg, zap.Error(err))
+func (log *LoggerZap) Fatal(msg string, err error, fields ...any) {
+	allFields := append(fields, "err", err)
+	log.Logger.Sugar().Fatalw(msg, allFields...)
 }
 
 // обертка для функции Info
-func (log *LoggerZap) Info(msg string, err error) {
-	log.Logger.Info(msg, zap.Error(err))
+func (log *LoggerZap) Info(msg string, err error, fields ...any) {
+	allFields := append(fields, "err", err)
+	log.Logger.Sugar().Infow(msg, allFields...)
 }
 
 // обертка для функции Sync

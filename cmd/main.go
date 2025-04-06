@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go-messenger/internal/api/server"
+	"go-messenger/internal/api/http"
 	"go-messenger/internal/config"
 	"go-messenger/internal/database"
 	"go-messenger/internal/logger"
@@ -27,13 +27,13 @@ func main() {
 	}
 
 	// конфиг
-	config, err := config.LoadConfig(logger)
+	config, err := config.LoadConfig()
 	if err != nil {
 		logger.Fatal("error loading config", err)
 	}
 
 	// подключение к БД
-	pgStorage, err := database.New(config)
+	pgStorage, err := database.New(&config.DB)
 	if err != nil {
 		logger.Fatal("error connecting to database", err)
 	}
@@ -42,6 +42,6 @@ func main() {
 	service := service.New(config, pgStorage, logger)
 
 	// запуск сервера
-	server := server.New(config, pgStorage, service, logger)
+	server := http.New(config, service, logger)
 	server.Start(ctx)
 }

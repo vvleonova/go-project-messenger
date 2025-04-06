@@ -33,8 +33,19 @@ CREATE TABLE IF NOT EXISTS messages (
 -- CREATE INDEX ON users using hash (receiver_id);
 
 -- chat + user
-CREATE TABLE chat_users (
+CREATE TABLE IF NOT EXISTS chat_users (
     chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     PRIMARY KEY (chat_id, user_id)
 );
+
+-- refresh tokens
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id UUID PRIMARY KEY,
+    token TEXT NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP NOT NULL,
+    created_on TIMESTAMP NOT NULL,
+    revoked BOOL NOT NULL
+);
+ 

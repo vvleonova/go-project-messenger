@@ -1,10 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
-
-	"go-messenger/internal/logger"
 
 	"github.com/joho/godotenv"
 )
@@ -28,21 +27,19 @@ type DBConfig struct {
 }
 
 // загрузка .env
-func LoadConfig(logger logger.Logger) (*Config, error) {
-	defer logger.Sync()
-
+func LoadConfig() (*Config, error) {
 	if err := godotenv.Load(); err != nil {
-		logger.Error("error loading .env file", err)
+		return nil, fmt.Errorf("error loading .env file: %w", err)
 	}
 
 	port, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
-		logger.Error("error getting PORT value", err)
+		return nil, fmt.Errorf("error getting PORT value: %w", err)
 	}
 
 	dbPort, err := strconv.Atoi(os.Getenv("DB_PORT"))
 	if err != nil {
-		logger.Error("error getting DB_PORT value", err)
+		return nil, fmt.Errorf("error getting DB_PORT value: %w", err)
 	}
 
 	return &Config{

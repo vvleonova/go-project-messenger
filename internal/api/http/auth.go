@@ -1,17 +1,18 @@
-package server
+package http
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"go-messenger/internal/api/errs"
 )
 
 func (s Server) authRequired(c *gin.Context) {
 	// получение токена из заголовка Authorization
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication token is required"})
+		c.Error(errs.Unauthorized("authentication token is required"))
 		c.Abort()
 		return
 	}
@@ -19,7 +20,7 @@ func (s Server) authRequired(c *gin.Context) {
 	// Authorization: Bearer <token>
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authentication format"})
+		c.Error(errs.Unauthorized("invalid authentication format"))
 		c.Abort()
 		return
 	}
@@ -29,7 +30,7 @@ func (s Server) authRequired(c *gin.Context) {
 	// проверка токена
 	claims, err := s.service.TokenVerify(tokenValue)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.Error(errs.Unauthorized(err.Error()))
 		c.Abort()
 		return
 	}

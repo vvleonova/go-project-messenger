@@ -1,12 +1,21 @@
 package dto
 
 import (
-	"fmt"
+	"errors"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
 )
+
+// обработка ошибок
+var errShortLogin = errors.New("user login is not long enough")
+var errWrongPhone = errors.New("wrong phone number format")
+var errYoungAge = errors.New("user must be older than 18")
+var errFutureBirth = errors.New("birth date can't be in future")
+var errShortPassword = errors.New("password must be at least 8 symbols")
+var errWrongPassword = errors.New("password can contain only latin letters, numbers, ! and _")
+var errLowPassword = errors.New("password must contain at least one capital letter")
 
 // структура для даты
 type Date struct {
@@ -39,32 +48,32 @@ type UserUpdate struct {
 func (u UserSignUp) ValidateUserSignUp() error {
 	// проверка длины логина
 	if len(u.Login) < 5 {
-		return fmt.Errorf("user login is not long enough")
+		return errShortLogin
 	}
 
 	// проверка номера телефона
 	if !regexp.MustCompile(`^\d{11}$`).MatchString(u.Phone) {
-		return fmt.Errorf("wrong phone number format")
+		return errWrongPhone
 	}
 
 	// проверка возраста
 	if !u.BirthDate.Before(time.Now().AddDate(-18, 0, 0)) {
-		return fmt.Errorf("user must be older than 18")
+		return errYoungAge
 	}
 
 	// проверка даты рождения
 	if u.BirthDate.After(time.Now()) {
-		return fmt.Errorf("birth date can't be in future")
+		return errFutureBirth
 	}
 
 	// проверка длины пароля
 	if len(u.Password) < 8 {
-		return fmt.Errorf("password must be at least 8 symbols")
+		return errShortPassword
 	}
 
 	// проверка символов пароля
 	if !regexp.MustCompile(`^[a-zA-Z0-9!_]+$`).MatchString(u.Password) {
-		return fmt.Errorf("password can contain only latin letters, numbers, ! and _")
+		return errWrongPassword
 	}
 
 	// проверка наличия заглавных букв в пароле
@@ -76,7 +85,7 @@ func (u UserSignUp) ValidateUserSignUp() error {
 		}
 	}
 	if !hasUpper {
-		return fmt.Errorf("password must contain at least one capital letter")
+		return errLowPassword
 	}
 
 	return nil
@@ -86,29 +95,7 @@ func (u UserSignUp) ValidateUserSignUp() error {
 func (u UserSignIn) ValidateUserSignIn() error {
 	// проверка номера телефона
 	if !regexp.MustCompile(`^\d{11}$`).MatchString(u.Phone) {
-		return fmt.Errorf("wrong phone number format")
-	}
-
-	// проверка длины пароля
-	if len(u.Password) < 8 {
-		return fmt.Errorf("password must be at least 8 symbols")
-	}
-
-	// проверка символов пароля
-	if !regexp.MustCompile(`^[a-zA-Z0-9!_]+$`).MatchString(u.Password) {
-		return fmt.Errorf("password can contain only latin letters, numbers, ! and _")
-	}
-
-	// проверка наличия заглавных букв в пароле
-	hasUpper := false
-	for _, r := range u.Password {
-		if unicode.IsUpper(r) {
-			hasUpper = true
-			break
-		}
-	}
-	if !hasUpper {
-		return fmt.Errorf("password must contain at least one capital letter")
+		return errWrongPhone
 	}
 
 	return nil
@@ -118,17 +105,17 @@ func (u UserSignIn) ValidateUserSignIn() error {
 func (u UserUpdate) ValidateUserUpdate() error {
 	// проверка длины логина
 	if u.Login != nil && len(*u.Login) < 5 {
-		return fmt.Errorf("user login is not long enough")
+		return errShortLogin
 	}
 
 	// проверка возраста
 	if u.BirthDate != nil && !u.BirthDate.Before(time.Now().AddDate(-18, 0, 0)) {
-		return fmt.Errorf("user must be older than 18")
+		return errYoungAge
 	}
 
 	// проверка даты рождения
 	if u.BirthDate != nil && u.BirthDate.After(time.Now()) {
-		return fmt.Errorf("birth date can't be in future")
+		return errFutureBirth
 	}
 
 	return nil
@@ -141,6 +128,8 @@ func (ct *Date) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+
 	ct.Time = parsedTime
+
 	return nil
 }

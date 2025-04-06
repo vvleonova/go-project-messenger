@@ -8,18 +8,21 @@ import (
 )
 
 // генерация JWT-токена
-func (s *Service) TokenGenerate(phone string) (string, error) {
-	claims := jwt.MapClaims{}
-	claims["phone"] = phone
-	claims["exp"] = time.Now().Add(time.Minute * 2).Unix()
+func (s *Service) TokenGenerate(phone string, ttl time.Duration) (string, time.Time, error) {
+	expiredAt := time.Now().Add(ttl)
+
+	claims := jwt.MapClaims{
+		"phone": phone,
+		"exp":   expiredAt.Unix(),
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenValue, err := token.SignedString([]byte(s.config.SecretKey))
 	if err != nil {
-		return "", fmt.Errorf("unable to create token for user with phone %s: %s", phone, err)
+		return "", expiredAt, fmt.Errorf("unable to create token for user with phone %s: %w", phone, err)
 	}
 
-	return tokenValue, nil
+	return tokenValue, expiredAt, nil
 }
 
 // проверка JWT-токена
