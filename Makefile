@@ -19,7 +19,7 @@ logs:
 ps:
 	docker-compose ps
 
-tools.install: ## Install tools
-	cd tools; \
- 	$(GO) mod download; \
- 	GOBIN=$(GOBIN) $(GO) generate -tags tools tools.go
+GOBIN := $(CURDIR)\bin
+tools.install:
+	cd tools && go mod download
+	set GOBIN=$(GOBIN) && go generate -tags tools ./tools

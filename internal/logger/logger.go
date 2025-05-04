@@ -16,23 +16,34 @@ func NewLogger() (Logger, error) {
 
 // обертка для функции Error
 func (log *LoggerZap) Error(msg string, err error, fields ...any) {
-	allFields := append(fields, "err", err)
-	log.Logger.Sugar().Errorw(msg, allFields...)
+	if err != nil {
+		fields = append(fields, "err", err)
+	}
+	log.Logger.Sugar().Errorw(msg, fields...)
 }
 
 // обертка для функции Fatal
 func (log *LoggerZap) Fatal(msg string, err error, fields ...any) {
-	allFields := append(fields, "err", err)
-	log.Logger.Sugar().Fatalw(msg, allFields...)
+	if err != nil {
+		fields = append(fields, "err", err)
+	}
+	log.Logger.Sugar().Fatalw(msg, fields...)
 }
 
 // обертка для функции Info
 func (log *LoggerZap) Info(msg string, err error, fields ...any) {
-	allFields := append(fields, "err", err)
-	log.Logger.Sugar().Infow(msg, allFields...)
+	if err != nil {
+		fields = append(fields, "err", err)
+	}
+	log.Logger.Sugar().Infow(msg, fields...)
 }
 
 // обертка для функции Sync
 func (log *LoggerZap) Sync() {
 	log.Logger.Sync()
+}
+
+// заглушка для logger
+func NewDummyLogger() Logger {
+	return &LoggerZap{zap.NewNop()}
 }

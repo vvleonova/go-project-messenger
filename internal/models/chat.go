@@ -1,12 +1,24 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // структура чата
 type Chat struct {
-	ID       uuid.UUID   `json:"id"`
-	Name     string      `json:"name"`
-	UsersIDs []uuid.UUID `json:"user_ids"`
-	Messages []uuid.UUID `json:"messages"`
+	ID        uuid.UUID   `json:"id" db:"id"`
+	CreatedOn time.Time   `db:"created_on"`
+	UsersIDs  []uuid.UUID `json:"user_ids"`
+	Messages  []uuid.UUID `json:"messages"`
 	// Photo
+}
+
+// структура чата для показа пользователю
+type ChatPreview struct {
+	ID            uuid.UUID `db:"id" json:"id"`
+	CompanionID   uuid.UUID `db:"companion_id" json:"companion_id"`
+	LastMessage   string    `db:"last_message_text" json:"last_message_text"`
+	LastMessageAt string    `db:"last_message_time" json:"last_message_time"`
 }

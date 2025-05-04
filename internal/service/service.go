@@ -12,7 +12,7 @@ type Service struct {
 	storage
 	logger       logger.Logger
 	config       *config.Config
-	hashComparer func(hashedPassword []byte, password []byte) error
+	hashComparer func(hashedPassword, password []byte) error
 }
 
 // создание структуры сервиса

@@ -2,6 +2,8 @@ package database
 
 import (
 	"go-messenger/internal/models"
+
+	"github.com/google/uuid"
 )
 
 // сохранение refresh token
@@ -43,6 +45,23 @@ func (pq *PgStorage) RefreshTokenRevoke(refreshToken string) error {
 
 	params := map[string]any{
 		"token": refreshToken,
+	}
+
+	_, err := pq.NamedExec(query, params)
+
+	return err
+}
+
+// revoke refresh token by user id
+func (pq *PgStorage) RefreshTokenRevokeByID(id uuid.UUID) error {
+	query := `
+	UPDATE refresh_tokens SET 
+		revoked = TRUE
+	WHERE user_id = :id
+	`
+
+	params := map[string]any{
+		"id": id.String(),
 	}
 
 	_, err := pq.NamedExec(query, params)

@@ -1,15 +1,14 @@
 package http
 
 import (
+	"go-messenger/internal/api/errs"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
-	"go-messenger/internal/api/errs"
 )
 
 // проверка подключения к БД
-func (s Server) healthCheck(c *gin.Context) {
+func (s *Server) healthCheck(c *gin.Context) {
 	err := s.service.HealthCheck()
 	if err != nil {
 		c.Error(errs.ServiceUnavailable("database is unreachable"))

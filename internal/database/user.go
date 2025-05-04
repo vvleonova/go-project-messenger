@@ -62,7 +62,7 @@ func (pq *PgStorage) UserUpdate(phone string, u *dto.UserUpdate) error {
 
 	params := map[string]any{
 		"login":      u.Login,
-		"birth_date": u.BirthDate.Time,
+		"birth_date": u.BirthDate,
 		"phone":      phone,
 	}
 

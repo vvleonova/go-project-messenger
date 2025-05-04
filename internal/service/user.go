@@ -6,13 +6,12 @@ import (
 
 	"go-messenger/internal/api/dto"
 	"go-messenger/internal/api/errs"
+	"go-messenger/internal/jwt"
 	"go-messenger/internal/models"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var err error
 
 // обновление и сохранение структуры пользователя
 func (s *Service) UserCreate(ur *dto.UserSignUp) (*models.User, error) {
@@ -20,6 +19,7 @@ func (s *Service) UserCreate(ur *dto.UserSignUp) (*models.User, error) {
 	u := &models.User{}
 
 	// создание ID
+	var err error
 	u.ID, err = uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("unable to create user uuid: %w", err)
@@ -28,7 +28,10 @@ func (s *Service) UserCreate(ur *dto.UserSignUp) (*models.User, error) {
 	// перенос полей из запроса
 	u.Login = ur.Login
 	u.Phone = ur.Phone
-	u.BirthDate = ur.BirthDate.Time
+	u.BirthDate, err = time.Parse("2006-01-02", ur.BirthDate)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse birth date: %w", err)
+	}
 
 	// определение времени создания пользователя
 	u.CreatedOn = time.Now()
@@ -77,7 +80,7 @@ func (s *Service) UserCheck(body *dto.UserSignIn) (*models.User, *errs.HTTPError
 	}
 
 	// проверка пароля
-	err = s.userComparePassword(user.PasswordHash, body.Password)
+	err = s.hashComparer([]byte(user.PasswordHash), []byte(body.Password))
 	if err != nil {
 		return nil, errs.Unauthorized("invalid credentials")
 	}
@@ -106,15 +109,15 @@ func (s *Service) UserUpdate(phone string, ur *dto.UserUpdate) error {
 }
 
 // генерация JWT-токена
-func (s *Service) UserGenerateToken(phone string, id uuid.UUID) (string, *errs.HTTPError) {
+func (s *Service) UserGenerateToken(id uuid.UUID) (string, *errs.HTTPError) {
 	// генерация access JWT-token
-	accessToken, _, err := s.TokenGenerate(phone, 1*time.Minute)
+	accessToken, _, err := jwt.TokenGenerate(id, s.config.SecretKey, 1*time.Minute)
 	if err != nil {
 		return "", errs.InternalServerError(fmt.Errorf("unable to create access token: %w", err).Error())
 	}
 
 	// генерация refresh JWT-token
-	refreshToken, expiredAt, err := s.TokenGenerate(phone, 30*24*time.Hour)
+	refreshToken, expiredAt, err := jwt.TokenGenerate(id, s.config.SecretKey, 30*24*time.Hour)
 	if err != nil {
 		return "", errs.InternalServerError(fmt.Errorf("unable to create refresh token: %w", err).Error())
 	}
@@ -134,19 +137,13 @@ func (s *Service) UserGenerateToken(phone string, id uuid.UUID) (string, *errs.H
 	return accessToken, nil
 }
 
-// сравнение переданного пароля с фактическим
-func (s *Service) userComparePassword(passwordHash, passwordRequest string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(passwordRequest))
-
-	return err
-}
-
 // подготовка refresh JWT-token
 func (s *Service) refreshTokenPrepare(refreshToken string, userID uuid.UUID, expiredAt time.Time) (*models.RefreshToken, error) {
 	// структура refresh JWT-token
 	rt := &models.RefreshToken{}
 
 	// создание ID
+	var err error
 	rt.ID, err = uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("unable to create refresh token uuid: %w", err)

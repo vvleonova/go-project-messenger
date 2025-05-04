@@ -3,30 +3,28 @@ package dto
 import (
 	"errors"
 	"regexp"
-	"strings"
 	"time"
 	"unicode"
+
+	"github.com/google/uuid"
 )
 
 // обработка ошибок
-var errShortLogin = errors.New("user login is not long enough")
-var errWrongPhone = errors.New("wrong phone number format")
-var errYoungAge = errors.New("user must be older than 18")
-var errFutureBirth = errors.New("birth date can't be in future")
-var errShortPassword = errors.New("password must be at least 8 symbols")
-var errWrongPassword = errors.New("password can contain only latin letters, numbers, ! and _")
-var errLowPassword = errors.New("password must contain at least one capital letter")
-
-// структура для даты
-type Date struct {
-	time.Time
-}
+var (
+	errShortLogin    = errors.New("user login is not long enough")
+	errWrongPhone    = errors.New("wrong phone number format")
+	errWrongDate     = errors.New("birth date must be in format 'YYYY-MM-DD'")
+	errYoungAge      = errors.New("user must be older than 18")
+	errShortPassword = errors.New("password must be at least 8 symbols")
+	errWrongPassword = errors.New("password can contain only latin letters, numbers, ! and _")
+	errLowPassword   = errors.New("password must contain at least one capital letter")
+)
 
 // структура пользователя для регистрации
 type UserSignUp struct {
 	Login     string `json:"login"`
 	Phone     string `json:"phone"`
-	BirthDate Date   `json:"birth_date"`
+	BirthDate string `json:"birth_date"`
 	Password  string `json:"password"`
 	// Photo
 }
@@ -40,8 +38,17 @@ type UserSignIn struct {
 // структура пользователя для обновления
 type UserUpdate struct {
 	Login     *string `json:"login,omitempty" db:"login"`
-	BirthDate *Date   `json:"birth_date,omitempty" db:"birth_date"`
+	BirthDate *string `json:"birth_date,omitempty" db:"birth_date"`
 	// Photo
+}
+
+// структура пользователя для вывода результата
+type UserResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Login     string    `json:"login"`
+	Phone     string    `json:"phone"`
+	BirthDate string    `json:"birth_date"`
+	CreatedOn string    `json:"created_on"`
 }
 
 // валидация структуры пользователя для регистрации
@@ -57,13 +64,13 @@ func (u UserSignUp) ValidateUserSignUp() error {
 	}
 
 	// проверка возраста
-	if !u.BirthDate.Before(time.Now().AddDate(-18, 0, 0)) {
-		return errYoungAge
+	birthDate, err := time.Parse("2006-01-02", u.BirthDate)
+	if err != nil {
+		return errWrongDate
 	}
 
-	// проверка даты рождения
-	if u.BirthDate.After(time.Now()) {
-		return errFutureBirth
+	if !birthDate.Before(time.Now().AddDate(-18, 0, 0)) {
+		return errYoungAge
 	}
 
 	// проверка длины пароля
@@ -109,27 +116,14 @@ func (u UserUpdate) ValidateUserUpdate() error {
 	}
 
 	// проверка возраста
-	if u.BirthDate != nil && !u.BirthDate.Before(time.Now().AddDate(-18, 0, 0)) {
+	birthDate, err := time.Parse("2006-01-02", *u.BirthDate)
+	if err != nil {
+		return errWrongDate
+	}
+
+	if u.BirthDate != nil && !birthDate.Before(time.Now().AddDate(-18, 0, 0)) {
 		return errYoungAge
 	}
-
-	// проверка даты рождения
-	if u.BirthDate != nil && u.BirthDate.After(time.Now()) {
-		return errFutureBirth
-	}
-
-	return nil
-}
-
-// кастомный парсер JSON для Date
-func (ct *Date) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), `"`)
-	parsedTime, err := time.Parse("2006-01-02", s)
-	if err != nil {
-		return err
-	}
-
-	ct.Time = parsedTime
 
 	return nil
 }

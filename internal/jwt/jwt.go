@@ -1,32 +1,33 @@
-package service
+package jwt
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
 // генерация JWT-токена
-func (s *Service) TokenGenerate(phone string, ttl time.Duration) (string, time.Time, error) {
+func TokenGenerate(id uuid.UUID, secretKey string, ttl time.Duration) (string, time.Time, error) {
 	expiredAt := time.Now().Add(ttl)
 
 	claims := jwt.MapClaims{
-		"phone": phone,
-		"exp":   expiredAt.Unix(),
+		"id":  id.String(),
+		"exp": expiredAt.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenValue, err := token.SignedString([]byte(s.config.SecretKey))
+	tokenValue, err := token.SignedString([]byte(secretKey))
 	if err != nil {
-		return "", expiredAt, fmt.Errorf("unable to create token for user with phone %s: %w", phone, err)
+		return "", expiredAt, fmt.Errorf("unable to create token for user with id %s: %w", id, err)
 	}
 
 	return tokenValue, expiredAt, nil
 }
 
 // проверка JWT-токена
-func (s *Service) TokenVerify(accessToken string) (jwt.MapClaims, error) {
+func TokenVerify(accessToken, secretKey string) (jwt.MapClaims, error) {
 	// parse token
 	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (any, error) {
 		// check signing method
@@ -34,7 +35,7 @@ func (s *Service) TokenVerify(accessToken string) (jwt.MapClaims, error) {
 			return nil, fmt.Errorf("invalid signing method")
 		}
 
-		return []byte(s.config.SecretKey), nil
+		return []byte(secretKey), nil
 	})
 
 	if err != nil {

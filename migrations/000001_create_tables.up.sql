@@ -13,15 +13,22 @@ CREATE INDEX ON users using hash (phone);
 -- chat
 CREATE TABLE IF NOT EXISTS chats (
     id UUID PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL
+    created_on TIMESTAMP NOT NULL
+);
+
+-- chat + user
+CREATE TABLE IF NOT EXISTS chat_users (
+    chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (chat_id, user_id)
 );
 
 -- message
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY,
-    chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-	sender_id UUID UNIQUE NOT NULL,
-	receiver_id UUID UNIQUE NOT NULL,
+    chat_id UUID REFERENCES chats(id) ON DELETE CASCADE NOT NULL,
+	sender_id UUID NOT NULL,
+	receiver_id UUID NOT NULL,
     text TEXT NOT NULL,
     send_at TIMESTAMP NOT NULL,
 	read BOOL NOT NULL,
@@ -32,18 +39,11 @@ CREATE TABLE IF NOT EXISTS messages (
 -- CREATE INDEX ON users using hash (sender_id);
 -- CREATE INDEX ON users using hash (receiver_id);
 
--- chat + user
-CREATE TABLE IF NOT EXISTS chat_users (
-    chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    PRIMARY KEY (chat_id, user_id)
-);
-
 -- refresh tokens
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY,
     token TEXT NOT NULL,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     created_on TIMESTAMP NOT NULL,
     revoked BOOL NOT NULL

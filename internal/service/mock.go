@@ -16,6 +16,30 @@ import (
 //
 //		// make and configure a mocked storage
 //		mockedstorage := &storageMock{
+//			ChatInsertFunc: func(chat *models.Chat) error {
+//				panic("mock out the ChatInsert method")
+//			},
+//			ChatMessagesGetFunc: func(uUID1 uuid.UUID, uUID2 uuid.UUID) ([]dto.MessageResponse, error) {
+//				panic("mock out the ChatMessagesGet method")
+//			},
+//			ChatUsersGetFunc: func(uUID1 uuid.UUID, uUID2 uuid.UUID) (*models.Chat, error) {
+//				panic("mock out the ChatUsersGet method")
+//			},
+//			ChatUsersInsertFunc: func(uUID1 uuid.UUID, uUID2 uuid.UUID) error {
+//				panic("mock out the ChatUsersInsert method")
+//			},
+//			ChatsUserGetFunc: func(uUID uuid.UUID) ([]models.ChatPreview, error) {
+//				panic("mock out the ChatsUserGet method")
+//			},
+//			MessageGetUnreadFunc: func(uUID uuid.UUID) ([]models.Message, error) {
+//				panic("mock out the MessageGetUnread method")
+//			},
+//			MessageInsertFunc: func(message *models.Message) error {
+//				panic("mock out the MessageInsert method")
+//			},
+//			MessageReadFunc: func(uUID uuid.UUID) error {
+//				panic("mock out the MessageRead method")
+//			},
 //			PingFunc: func() error {
 //				panic("mock out the Ping method")
 //			},
@@ -24,6 +48,9 @@ import (
 //			},
 //			RefreshTokenRevokeFunc: func(s string) error {
 //				panic("mock out the RefreshTokenRevoke method")
+//			},
+//			RefreshTokenRevokeByIDFunc: func(uUID uuid.UUID) error {
+//				panic("mock out the RefreshTokenRevokeByID method")
 //			},
 //			RefreshTokenSaveFunc: func(refreshToken *models.RefreshToken) error {
 //				panic("mock out the RefreshTokenSave method")
@@ -50,6 +77,30 @@ import (
 //
 //	}
 type storageMock struct {
+	// ChatInsertFunc mocks the ChatInsert method.
+	ChatInsertFunc func(chat *models.Chat) error
+
+	// ChatMessagesGetFunc mocks the ChatMessagesGet method.
+	ChatMessagesGetFunc func(uUID1 uuid.UUID, uUID2 uuid.UUID) ([]dto.MessageResponse, error)
+
+	// ChatUsersGetFunc mocks the ChatUsersGet method.
+	ChatUsersGetFunc func(uUID1 uuid.UUID, uUID2 uuid.UUID) (*models.Chat, error)
+
+	// ChatUsersInsertFunc mocks the ChatUsersInsert method.
+	ChatUsersInsertFunc func(uUID1 uuid.UUID, uUID2 uuid.UUID) error
+
+	// ChatsUserGetFunc mocks the ChatsUserGet method.
+	ChatsUserGetFunc func(uUID uuid.UUID) ([]models.ChatPreview, error)
+
+	// MessageGetUnreadFunc mocks the MessageGetUnread method.
+	MessageGetUnreadFunc func(uUID uuid.UUID) ([]models.Message, error)
+
+	// MessageInsertFunc mocks the MessageInsert method.
+	MessageInsertFunc func(message *models.Message) error
+
+	// MessageReadFunc mocks the MessageRead method.
+	MessageReadFunc func(uUID uuid.UUID) error
+
 	// PingFunc mocks the Ping method.
 	PingFunc func() error
 
@@ -58,6 +109,9 @@ type storageMock struct {
 
 	// RefreshTokenRevokeFunc mocks the RefreshTokenRevoke method.
 	RefreshTokenRevokeFunc func(s string) error
+
+	// RefreshTokenRevokeByIDFunc mocks the RefreshTokenRevokeByID method.
+	RefreshTokenRevokeByIDFunc func(uUID uuid.UUID) error
 
 	// RefreshTokenSaveFunc mocks the RefreshTokenSave method.
 	RefreshTokenSaveFunc func(refreshToken *models.RefreshToken) error
@@ -79,6 +133,52 @@ type storageMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ChatInsert holds details about calls to the ChatInsert method.
+		ChatInsert []struct {
+			// Chat is the chat argument value.
+			Chat *models.Chat
+		}
+		// ChatMessagesGet holds details about calls to the ChatMessagesGet method.
+		ChatMessagesGet []struct {
+			// UUID1 is the uUID1 argument value.
+			UUID1 uuid.UUID
+			// UUID2 is the uUID2 argument value.
+			UUID2 uuid.UUID
+		}
+		// ChatUsersGet holds details about calls to the ChatUsersGet method.
+		ChatUsersGet []struct {
+			// UUID1 is the uUID1 argument value.
+			UUID1 uuid.UUID
+			// UUID2 is the uUID2 argument value.
+			UUID2 uuid.UUID
+		}
+		// ChatUsersInsert holds details about calls to the ChatUsersInsert method.
+		ChatUsersInsert []struct {
+			// UUID1 is the uUID1 argument value.
+			UUID1 uuid.UUID
+			// UUID2 is the uUID2 argument value.
+			UUID2 uuid.UUID
+		}
+		// ChatsUserGet holds details about calls to the ChatsUserGet method.
+		ChatsUserGet []struct {
+			// UUID is the uUID argument value.
+			UUID uuid.UUID
+		}
+		// MessageGetUnread holds details about calls to the MessageGetUnread method.
+		MessageGetUnread []struct {
+			// UUID is the uUID argument value.
+			UUID uuid.UUID
+		}
+		// MessageInsert holds details about calls to the MessageInsert method.
+		MessageInsert []struct {
+			// Message is the message argument value.
+			Message *models.Message
+		}
+		// MessageRead holds details about calls to the MessageRead method.
+		MessageRead []struct {
+			// UUID is the uUID argument value.
+			UUID uuid.UUID
+		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 		}
@@ -91,6 +191,11 @@ type storageMock struct {
 		RefreshTokenRevoke []struct {
 			// S is the s argument value.
 			S string
+		}
+		// RefreshTokenRevokeByID holds details about calls to the RefreshTokenRevokeByID method.
+		RefreshTokenRevokeByID []struct {
+			// UUID is the uUID argument value.
+			UUID uuid.UUID
 		}
 		// RefreshTokenSave holds details about calls to the RefreshTokenSave method.
 		RefreshTokenSave []struct {
@@ -125,15 +230,292 @@ type storageMock struct {
 			UserUpdate *dto.UserUpdate
 		}
 	}
-	lockPing               sync.RWMutex
-	lockRefreshTokenGet    sync.RWMutex
-	lockRefreshTokenRevoke sync.RWMutex
-	lockRefreshTokenSave   sync.RWMutex
-	lockUserDelete         sync.RWMutex
-	lockUserGetID          sync.RWMutex
-	lockUserGetPhone       sync.RWMutex
-	lockUserInsert         sync.RWMutex
-	lockUserUpdate         sync.RWMutex
+	lockChatInsert             sync.RWMutex
+	lockChatMessagesGet        sync.RWMutex
+	lockChatUsersGet           sync.RWMutex
+	lockChatUsersInsert        sync.RWMutex
+	lockChatsUserGet           sync.RWMutex
+	lockMessageGetUnread       sync.RWMutex
+	lockMessageInsert          sync.RWMutex
+	lockMessageRead            sync.RWMutex
+	lockPing                   sync.RWMutex
+	lockRefreshTokenGet        sync.RWMutex
+	lockRefreshTokenRevoke     sync.RWMutex
+	lockRefreshTokenRevokeByID sync.RWMutex
+	lockRefreshTokenSave       sync.RWMutex
+	lockUserDelete             sync.RWMutex
+	lockUserGetID              sync.RWMutex
+	lockUserGetPhone           sync.RWMutex
+	lockUserInsert             sync.RWMutex
+	lockUserUpdate             sync.RWMutex
+}
+
+// ChatInsert calls ChatInsertFunc.
+func (mock *storageMock) ChatInsert(chat *models.Chat) error {
+	if mock.ChatInsertFunc == nil {
+		panic("storageMock.ChatInsertFunc: method is nil but storage.ChatInsert was just called")
+	}
+	callInfo := struct {
+		Chat *models.Chat
+	}{
+		Chat: chat,
+	}
+	mock.lockChatInsert.Lock()
+	mock.calls.ChatInsert = append(mock.calls.ChatInsert, callInfo)
+	mock.lockChatInsert.Unlock()
+	return mock.ChatInsertFunc(chat)
+}
+
+// ChatInsertCalls gets all the calls that were made to ChatInsert.
+// Check the length with:
+//
+//	len(mockedstorage.ChatInsertCalls())
+func (mock *storageMock) ChatInsertCalls() []struct {
+	Chat *models.Chat
+} {
+	var calls []struct {
+		Chat *models.Chat
+	}
+	mock.lockChatInsert.RLock()
+	calls = mock.calls.ChatInsert
+	mock.lockChatInsert.RUnlock()
+	return calls
+}
+
+// ChatMessagesGet calls ChatMessagesGetFunc.
+func (mock *storageMock) ChatMessagesGet(uUID1 uuid.UUID, uUID2 uuid.UUID) ([]dto.MessageResponse, error) {
+	if mock.ChatMessagesGetFunc == nil {
+		panic("storageMock.ChatMessagesGetFunc: method is nil but storage.ChatMessagesGet was just called")
+	}
+	callInfo := struct {
+		UUID1 uuid.UUID
+		UUID2 uuid.UUID
+	}{
+		UUID1: uUID1,
+		UUID2: uUID2,
+	}
+	mock.lockChatMessagesGet.Lock()
+	mock.calls.ChatMessagesGet = append(mock.calls.ChatMessagesGet, callInfo)
+	mock.lockChatMessagesGet.Unlock()
+	return mock.ChatMessagesGetFunc(uUID1, uUID2)
+}
+
+// ChatMessagesGetCalls gets all the calls that were made to ChatMessagesGet.
+// Check the length with:
+//
+//	len(mockedstorage.ChatMessagesGetCalls())
+func (mock *storageMock) ChatMessagesGetCalls() []struct {
+	UUID1 uuid.UUID
+	UUID2 uuid.UUID
+} {
+	var calls []struct {
+		UUID1 uuid.UUID
+		UUID2 uuid.UUID
+	}
+	mock.lockChatMessagesGet.RLock()
+	calls = mock.calls.ChatMessagesGet
+	mock.lockChatMessagesGet.RUnlock()
+	return calls
+}
+
+// ChatUsersGet calls ChatUsersGetFunc.
+func (mock *storageMock) ChatUsersGet(uUID1 uuid.UUID, uUID2 uuid.UUID) (*models.Chat, error) {
+	if mock.ChatUsersGetFunc == nil {
+		panic("storageMock.ChatUsersGetFunc: method is nil but storage.ChatUsersGet was just called")
+	}
+	callInfo := struct {
+		UUID1 uuid.UUID
+		UUID2 uuid.UUID
+	}{
+		UUID1: uUID1,
+		UUID2: uUID2,
+	}
+	mock.lockChatUsersGet.Lock()
+	mock.calls.ChatUsersGet = append(mock.calls.ChatUsersGet, callInfo)
+	mock.lockChatUsersGet.Unlock()
+	return mock.ChatUsersGetFunc(uUID1, uUID2)
+}
+
+// ChatUsersGetCalls gets all the calls that were made to ChatUsersGet.
+// Check the length with:
+//
+//	len(mockedstorage.ChatUsersGetCalls())
+func (mock *storageMock) ChatUsersGetCalls() []struct {
+	UUID1 uuid.UUID
+	UUID2 uuid.UUID
+} {
+	var calls []struct {
+		UUID1 uuid.UUID
+		UUID2 uuid.UUID
+	}
+	mock.lockChatUsersGet.RLock()
+	calls = mock.calls.ChatUsersGet
+	mock.lockChatUsersGet.RUnlock()
+	return calls
+}
+
+// ChatUsersInsert calls ChatUsersInsertFunc.
+func (mock *storageMock) ChatUsersInsert(uUID1 uuid.UUID, uUID2 uuid.UUID) error {
+	if mock.ChatUsersInsertFunc == nil {
+		panic("storageMock.ChatUsersInsertFunc: method is nil but storage.ChatUsersInsert was just called")
+	}
+	callInfo := struct {
+		UUID1 uuid.UUID
+		UUID2 uuid.UUID
+	}{
+		UUID1: uUID1,
+		UUID2: uUID2,
+	}
+	mock.lockChatUsersInsert.Lock()
+	mock.calls.ChatUsersInsert = append(mock.calls.ChatUsersInsert, callInfo)
+	mock.lockChatUsersInsert.Unlock()
+	return mock.ChatUsersInsertFunc(uUID1, uUID2)
+}
+
+// ChatUsersInsertCalls gets all the calls that were made to ChatUsersInsert.
+// Check the length with:
+//
+//	len(mockedstorage.ChatUsersInsertCalls())
+func (mock *storageMock) ChatUsersInsertCalls() []struct {
+	UUID1 uuid.UUID
+	UUID2 uuid.UUID
+} {
+	var calls []struct {
+		UUID1 uuid.UUID
+		UUID2 uuid.UUID
+	}
+	mock.lockChatUsersInsert.RLock()
+	calls = mock.calls.ChatUsersInsert
+	mock.lockChatUsersInsert.RUnlock()
+	return calls
+}
+
+// ChatsUserGet calls ChatsUserGetFunc.
+func (mock *storageMock) ChatsUserGet(uUID uuid.UUID) ([]models.ChatPreview, error) {
+	if mock.ChatsUserGetFunc == nil {
+		panic("storageMock.ChatsUserGetFunc: method is nil but storage.ChatsUserGet was just called")
+	}
+	callInfo := struct {
+		UUID uuid.UUID
+	}{
+		UUID: uUID,
+	}
+	mock.lockChatsUserGet.Lock()
+	mock.calls.ChatsUserGet = append(mock.calls.ChatsUserGet, callInfo)
+	mock.lockChatsUserGet.Unlock()
+	return mock.ChatsUserGetFunc(uUID)
+}
+
+// ChatsUserGetCalls gets all the calls that were made to ChatsUserGet.
+// Check the length with:
+//
+//	len(mockedstorage.ChatsUserGetCalls())
+func (mock *storageMock) ChatsUserGetCalls() []struct {
+	UUID uuid.UUID
+} {
+	var calls []struct {
+		UUID uuid.UUID
+	}
+	mock.lockChatsUserGet.RLock()
+	calls = mock.calls.ChatsUserGet
+	mock.lockChatsUserGet.RUnlock()
+	return calls
+}
+
+// MessageGetUnread calls MessageGetUnreadFunc.
+func (mock *storageMock) MessageGetUnread(uUID uuid.UUID) ([]models.Message, error) {
+	if mock.MessageGetUnreadFunc == nil {
+		panic("storageMock.MessageGetUnreadFunc: method is nil but storage.MessageGetUnread was just called")
+	}
+	callInfo := struct {
+		UUID uuid.UUID
+	}{
+		UUID: uUID,
+	}
+	mock.lockMessageGetUnread.Lock()
+	mock.calls.MessageGetUnread = append(mock.calls.MessageGetUnread, callInfo)
+	mock.lockMessageGetUnread.Unlock()
+	return mock.MessageGetUnreadFunc(uUID)
+}
+
+// MessageGetUnreadCalls gets all the calls that were made to MessageGetUnread.
+// Check the length with:
+//
+//	len(mockedstorage.MessageGetUnreadCalls())
+func (mock *storageMock) MessageGetUnreadCalls() []struct {
+	UUID uuid.UUID
+} {
+	var calls []struct {
+		UUID uuid.UUID
+	}
+	mock.lockMessageGetUnread.RLock()
+	calls = mock.calls.MessageGetUnread
+	mock.lockMessageGetUnread.RUnlock()
+	return calls
+}
+
+// MessageInsert calls MessageInsertFunc.
+func (mock *storageMock) MessageInsert(message *models.Message) error {
+	if mock.MessageInsertFunc == nil {
+		panic("storageMock.MessageInsertFunc: method is nil but storage.MessageInsert was just called")
+	}
+	callInfo := struct {
+		Message *models.Message
+	}{
+		Message: message,
+	}
+	mock.lockMessageInsert.Lock()
+	mock.calls.MessageInsert = append(mock.calls.MessageInsert, callInfo)
+	mock.lockMessageInsert.Unlock()
+	return mock.MessageInsertFunc(message)
+}
+
+// MessageInsertCalls gets all the calls that were made to MessageInsert.
+// Check the length with:
+//
+//	len(mockedstorage.MessageInsertCalls())
+func (mock *storageMock) MessageInsertCalls() []struct {
+	Message *models.Message
+} {
+	var calls []struct {
+		Message *models.Message
+	}
+	mock.lockMessageInsert.RLock()
+	calls = mock.calls.MessageInsert
+	mock.lockMessageInsert.RUnlock()
+	return calls
+}
+
+// MessageRead calls MessageReadFunc.
+func (mock *storageMock) MessageRead(uUID uuid.UUID) error {
+	if mock.MessageReadFunc == nil {
+		panic("storageMock.MessageReadFunc: method is nil but storage.MessageRead was just called")
+	}
+	callInfo := struct {
+		UUID uuid.UUID
+	}{
+		UUID: uUID,
+	}
+	mock.lockMessageRead.Lock()
+	mock.calls.MessageRead = append(mock.calls.MessageRead, callInfo)
+	mock.lockMessageRead.Unlock()
+	return mock.MessageReadFunc(uUID)
+}
+
+// MessageReadCalls gets all the calls that were made to MessageRead.
+// Check the length with:
+//
+//	len(mockedstorage.MessageReadCalls())
+func (mock *storageMock) MessageReadCalls() []struct {
+	UUID uuid.UUID
+} {
+	var calls []struct {
+		UUID uuid.UUID
+	}
+	mock.lockMessageRead.RLock()
+	calls = mock.calls.MessageRead
+	mock.lockMessageRead.RUnlock()
+	return calls
 }
 
 // Ping calls PingFunc.
@@ -224,6 +606,38 @@ func (mock *storageMock) RefreshTokenRevokeCalls() []struct {
 	mock.lockRefreshTokenRevoke.RLock()
 	calls = mock.calls.RefreshTokenRevoke
 	mock.lockRefreshTokenRevoke.RUnlock()
+	return calls
+}
+
+// RefreshTokenRevokeByID calls RefreshTokenRevokeByIDFunc.
+func (mock *storageMock) RefreshTokenRevokeByID(uUID uuid.UUID) error {
+	if mock.RefreshTokenRevokeByIDFunc == nil {
+		panic("storageMock.RefreshTokenRevokeByIDFunc: method is nil but storage.RefreshTokenRevokeByID was just called")
+	}
+	callInfo := struct {
+		UUID uuid.UUID
+	}{
+		UUID: uUID,
+	}
+	mock.lockRefreshTokenRevokeByID.Lock()
+	mock.calls.RefreshTokenRevokeByID = append(mock.calls.RefreshTokenRevokeByID, callInfo)
+	mock.lockRefreshTokenRevokeByID.Unlock()
+	return mock.RefreshTokenRevokeByIDFunc(uUID)
+}
+
+// RefreshTokenRevokeByIDCalls gets all the calls that were made to RefreshTokenRevokeByID.
+// Check the length with:
+//
+//	len(mockedstorage.RefreshTokenRevokeByIDCalls())
+func (mock *storageMock) RefreshTokenRevokeByIDCalls() []struct {
+	UUID uuid.UUID
+} {
+	var calls []struct {
+		UUID uuid.UUID
+	}
+	mock.lockRefreshTokenRevokeByID.RLock()
+	calls = mock.calls.RefreshTokenRevokeByID
+	mock.lockRefreshTokenRevokeByID.RUnlock()
 	return calls
 }
 

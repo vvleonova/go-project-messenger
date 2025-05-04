@@ -20,4 +20,13 @@ type storage interface {
 	RefreshTokenSave(*models.RefreshToken) error
 	RefreshTokenGet(string) (*models.RefreshToken, error)
 	RefreshTokenRevoke(string) error
+	RefreshTokenRevokeByID(uuid.UUID) error
+	MessageInsert(*models.Message) error
+	MessageRead(uuid.UUID) error
+	MessageGetUnread(uuid.UUID) ([]models.Message, error)
+	ChatUsersGet(uuid.UUID, uuid.UUID) (*models.Chat, error)
+	ChatInsert(*models.Chat) error
+	ChatUsersInsert(uuid.UUID, uuid.UUID) error
+	ChatsUserGet(uuid.UUID) ([]models.ChatPreview, error)
+	ChatMessagesGet(uuid.UUID, uuid.UUID) ([]dto.MessageResponse, error)
 }

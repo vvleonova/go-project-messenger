@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	"go-messenger/internal/api/errs"
+
+	"github.com/google/uuid"
 )
 
 // получение нового JWT-token
@@ -20,7 +22,7 @@ func (s *Service) RefreshTokenUpdate(refreshToken string) (string, *errs.HTTPErr
 	}
 
 	// генерация нового JWT-token
-	accessToken, httpError := s.UserGenerateToken(user.Phone, user.ID)
+	accessToken, httpError := s.UserGenerateToken(user.ID)
 	if httpError != nil {
 		return "", httpError
 	}
@@ -32,4 +34,15 @@ func (s *Service) RefreshTokenUpdate(refreshToken string) (string, *errs.HTTPErr
 	}
 
 	return accessToken, nil
+}
+
+// revoke нового JWT-token
+func (s *Service) RefreshTokenRevoke(id uuid.UUID) *errs.HTTPError {
+	// revoke старого refresh JWT-token
+	err := s.storage.RefreshTokenRevokeByID(id)
+	if err != nil {
+		return errs.InternalServerError(fmt.Errorf("unable to revoke refresh token for user %s: %w", id, err).Error())
+	}
+
+	return nil
 }

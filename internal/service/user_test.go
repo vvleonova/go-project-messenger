@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"go-messenger/internal/api/dto"
+	"go-messenger/internal/config"
 	"go-messenger/internal/models"
 	"testing"
 	"time"
@@ -11,79 +12,93 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	login           = "testuser"
+	correctPhone    = "79999999999"
+	wrongPhone      = "00000000000"
+	correctPassword = "mypassword"
+	hashPassword    = "mypasswordhashed"
+	wrongPassword   = "notmypassword"
+
+	errSaveDB       = "unable to save to database"
+	errGetDB        = "unable to get data from database"
+	errDeleteDB     = "unable to delete data from database"
+	errUpdateDB     = "unable to update data in database"
+	errInvalidCreds = "invalid credentials"
+)
+
 var (
-	login        = "testuser"
-	correctPhone = "79999999999"
-	wrongPhone   = "00000000000"
+	loginVar     = "testuser"
+	birth        = "1997-01-01"
+	birthDate, _ = time.Parse("2006-01-02", birth)
+	correctID    = uuid.New()
+	wrongID      = uuid.New()
 )
 
 func TestService_UserCreate(t *testing.T) {
 	// входные данные для теста
-	birth := time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
 	signUp := &dto.UserSignUp{
 		Login:     login,
 		Phone:     correctPhone,
-		BirthDate: dto.Date{Time: birth},
-		Password:  "securepassword",
+		BirthDate: birth,
+		Password:  correctPassword,
 	}
 
 	// возможные кейсы
 	tests := []struct {
-		name       string
-		input      *dto.UserSignUp
-		wantErr    bool
-		mockInsert func(user *models.User) error
+		name    string
+		storage *storageMock
+		input   *dto.UserSignUp
+		wantErr bool
 	}{
 		{
-			name:    "user creation successful",
+			name: "user creation successful",
+			storage: &storageMock{
+				UserInsertFunc: func(user *models.User) error {
+					// проверка, что в UserInsert доходят правильные данные
+					assert.Equal(t, login, user.Login)
+					assert.Equal(t, correctPhone, user.Phone)
+					assert.WithinDuration(t, birthDate, user.BirthDate, time.Second)
+					assert.NotEmpty(t, user.PasswordHash)
+					return nil
+				},
+			},
 			input:   signUp,
 			wantErr: false,
-			mockInsert: func(user *models.User) error {
-				// проверка, что в UserInsert доходят правильные данные
-				assert.Equal(t, login, user.Login)
-				assert.Equal(t, correctPhone, user.Phone)
-				assert.WithinDuration(t, birth, user.BirthDate, time.Second)
-				assert.NotEmpty(t, user.PasswordHash)
-				return nil
-			},
 		},
 		{
-			name:    "user creation fails",
+			name: "user creation fails",
+			storage: &storageMock{
+				UserInsertFunc: func(user *models.User) error {
+					return errors.New(errSaveDB)
+				},
+			},
 			input:   signUp,
 			wantErr: true,
-			mockInsert: func(user *models.User) error {
-				return errors.New("unable to save user to database")
-			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// создание мока с нужным поведением
-			mockStorage := &storageMock{
-				UserInsertFunc: tt.mockInsert,
-			}
-
 			// создание сервиса с моком
 			s := &Service{
-				storage: mockStorage,
+				storage: tt.storage,
 			}
 
 			// вызов тестируемой функции
 			got, err := s.UserCreate(tt.input)
 
-			// проверка на ошибку
+			// проверка результата
 			if tt.wantErr {
-				assert.Error(t, err, "expected an error, got nil") // функция должна вернуть ошибку
-				assert.Nil(t, got)                                 // функция не должна вернуть объект
+				assert.ErrorContains(t, err, errSaveDB)
+				assert.Nil(t, got)
 			} else {
-				assert.NoError(t, err) // функция должна пройти без ошибки
-				assert.NotNil(t, got)  // функция должна вернуть не nil объект
-				// проверки, что вернулся корректный пользователь
+				assert.NoError(t, err)
+				assert.NotNil(t, got)
+				assert.NotEqual(t, uuid.Nil, got.ID)
 				assert.Equal(t, login, got.Login)
 				assert.Equal(t, correctPhone, got.Phone)
-				assert.WithinDuration(t, birth, got.BirthDate, time.Second)
+				assert.WithinDuration(t, birthDate, got.BirthDate, time.Second)
 				assert.NotEmpty(t, got.PasswordHash)
-				assert.NotEqual(t, uuid.Nil, got.ID)
 			}
 		})
 	}
@@ -92,61 +107,214 @@ func TestService_UserCreate(t *testing.T) {
 func TestService_UserGetPhone(t *testing.T) {
 	// возможные кейсы
 	tests := []struct {
-		name       string
-		phone      string
-		mockReturn *models.User
-		mockError  error
-		wantErr    bool
-		wantLogin  string
-		wantPhone  string
+		name    string
+		storage *storageMock
+		input   string
+		wantErr bool
 	}{
 		{
-			name:  "user returned",
-			phone: correctPhone,
-			mockReturn: &models.User{
-				Login: login,
-				Phone: correctPhone,
+			name: "user returned",
+			storage: &storageMock{
+				UserGetPhoneFunc: func(phone string) (*models.User, error) {
+					assert.Equal(t, correctPhone, phone)
+					return &models.User{
+						Phone: correctPhone,
+					}, nil
+				},
 			},
-			mockError: nil,
-			wantErr:   false,
-			wantLogin: login,
-			wantPhone: correctPhone,
+			input:   correctPhone,
+			wantErr: false,
 		},
 		{
-			name:       "user not returned",
-			phone:      wrongPhone,
-			mockReturn: nil,
-			mockError:  errors.New("not found"),
-			wantErr:    true,
+			name: "user not returned",
+			storage: &storageMock{
+				UserGetPhoneFunc: func(phone string) (*models.User, error) {
+					return nil, errors.New(errGetDB)
+				},
+			},
+			input:   wrongPhone,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// создание мока с нужным поведением
-			mockStorage := &storageMock{
-				UserGetPhoneFunc: func(phone string) (*models.User, error) {
-					assert.Equal(t, tt.phone, phone)
-					return tt.mockReturn, tt.mockError
-				},
-			}
-
 			// создание сервиса с моком
 			s := &Service{
-				storage: mockStorage,
+				storage: tt.storage,
 			}
 
 			// вызов тестируемой функции
-			got, err := s.UserGetPhone(tt.phone)
+			got, err := s.UserGetPhone(tt.input)
 
-			// проверка ошибок
+			// проверка результата
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.ErrorContains(t, err, errGetDB)
 				assert.Nil(t, got)
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, got)
-				assert.Equal(t, tt.wantLogin, got.Login)
-				assert.Equal(t, tt.wantPhone, got.Phone)
+				assert.Equal(t, correctPhone, got.Phone)
+			}
+		})
+	}
+}
+
+func TestService_UserGetID(t *testing.T) {
+	// возможные кейсы
+	tests := []struct {
+		name    string
+		storage *storageMock
+		input   uuid.UUID
+		wantErr bool
+	}{
+		{
+			name: "user returned",
+			storage: &storageMock{
+				UserGetIDFunc: func(id uuid.UUID) (*models.User, error) {
+					assert.Equal(t, correctID, id)
+					return &models.User{
+						ID: correctID,
+					}, nil
+				},
+			},
+			input:   correctID,
+			wantErr: false,
+		},
+		{
+			name: "user not returned",
+			storage: &storageMock{
+				UserGetIDFunc: func(id uuid.UUID) (*models.User, error) {
+					return nil, errors.New(errGetDB)
+				},
+			},
+			input:   wrongID,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создание сервиса с моком
+			s := &Service{
+				storage: tt.storage,
+			}
+
+			// вызов тестируемой функции
+			got, err := s.UserGetID(tt.input)
+
+			// проверка результата
+			if tt.wantErr {
+				assert.ErrorContains(t, err, errGetDB)
+				assert.Nil(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, got)
+				assert.Equal(t, correctID, got.ID)
+			}
+		})
+	}
+}
+
+func TestService_UserCheck(t *testing.T) {
+	// возможные кейсы
+	tests := []struct {
+		name               string
+		storage            *storageMock
+		hashComparer       func(hashedPassword, password []byte) error
+		input              *dto.UserSignIn
+		wantErrNotFound    bool
+		wantErrInvalidCred bool
+		wantErrStatus      int
+	}{
+		{
+			name: "user is correct",
+			storage: &storageMock{
+				UserGetPhoneFunc: func(phone string) (*models.User, error) {
+					assert.Equal(t, correctPhone, phone)
+					return &models.User{
+						ID:           correctID,
+						Login:        login,
+						Phone:        correctPhone,
+						PasswordHash: hashPassword,
+					}, nil
+				},
+			},
+			hashComparer: func(hashedPassword, password []byte) error {
+				assert.Equal(t, []byte(hashPassword), hashedPassword)
+				assert.Equal(t, []byte(correctPassword), password)
+				return nil
+			},
+			input: &dto.UserSignIn{
+				Phone:    correctPhone,
+				Password: correctPassword,
+			},
+		},
+		{
+			name: "user not returned",
+			storage: &storageMock{
+				UserGetPhoneFunc: func(phone string) (*models.User, error) {
+					return nil, errors.New(errGetDB)
+				},
+			},
+			hashComparer: func(hashedPassword, password []byte) error {
+				return nil
+			},
+			input: &dto.UserSignIn{
+				Phone:    wrongPhone,
+				Password: correctPassword,
+			},
+			wantErrNotFound: true,
+			wantErrStatus:   500,
+		},
+		{
+			name: "incorrect password",
+			storage: &storageMock{
+				UserGetPhoneFunc: func(phone string) (*models.User, error) {
+					assert.Equal(t, correctPhone, phone)
+					return &models.User{
+						ID:           correctID,
+						Login:        login,
+						Phone:        correctPhone,
+						PasswordHash: hashPassword,
+					}, nil
+				},
+			},
+			hashComparer: func(hashedPassword, password []byte) error {
+				return errors.New(errInvalidCreds)
+			},
+			input: &dto.UserSignIn{
+				Phone:    correctPhone,
+				Password: wrongPassword,
+			},
+			wantErrInvalidCred: true,
+			wantErrStatus:      401,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создание сервиса с моком
+			s := &Service{
+				storage:      tt.storage,
+				hashComparer: tt.hashComparer,
+			}
+
+			// вызов тестируемой функции
+			got, err := s.UserCheck(tt.input)
+
+			// проверка результата
+			if tt.wantErrNotFound {
+				assert.ErrorContains(t, err, errGetDB)
+				assert.Nil(t, got)
+				assert.Equal(t, tt.wantErrStatus, err.Status)
+			} else if tt.wantErrInvalidCred {
+				assert.ErrorContains(t, err, errInvalidCreds)
+				assert.Nil(t, got)
+				assert.Equal(t, tt.wantErrStatus, err.Status)
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, got)
+				assert.Equal(t, correctID, got.ID)
+				assert.Equal(t, correctPhone, got.Phone)
+				assert.Equal(t, hashPassword, got.PasswordHash)
 			}
 		})
 	}
@@ -155,47 +323,194 @@ func TestService_UserGetPhone(t *testing.T) {
 func TestService_UserDelete(t *testing.T) {
 	// возможные кейсы
 	tests := []struct {
-		name      string
-		phone     string
-		mockError error
-		wantErr   bool
+		name    string
+		storage *storageMock
+		input   string
+		wantErr bool
 	}{
 		{
-			name:      "user deleted",
-			phone:     correctPhone,
-			mockError: nil,
-			wantErr:   false,
+			name: "user deleted",
+			storage: &storageMock{
+				UserDeleteFunc: func(phone string) error {
+					assert.Equal(t, correctPhone, phone)
+					return nil
+				},
+			},
+			input:   correctPhone,
+			wantErr: false,
 		},
 		{
-			name:      "user not deleted",
-			phone:     wrongPhone,
-			mockError: errors.New("unable to delete user from database"),
-			wantErr:   true,
+			name: "user not deleted",
+			storage: &storageMock{
+				UserDeleteFunc: func(phone string) error {
+					return errors.New(errDeleteDB)
+				},
+			},
+			input:   wrongPhone,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// создание мока с нужным поведением
-			mockStorage := &storageMock{
-				UserDeleteFunc: func(phone string) error {
-					assert.Equal(t, tt.phone, phone)
-					return tt.mockError
-				},
-			}
-
 			// создание сервиса с моком
 			s := &Service{
-				storage: mockStorage,
+				storage: tt.storage,
 			}
 
 			// вызов тестируемой функции
-			err := s.UserDelete(tt.phone)
+			err := s.UserDelete(tt.input)
 
-			// проверка ошибок
+			// проверка результата
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.ErrorContains(t, err, errDeleteDB)
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestService_UserUpdate(t *testing.T) {
+	// возможные кейсы
+	tests := []struct {
+		name       string
+		storage    *storageMock
+		inputPhone string
+		inputData  *dto.UserUpdate
+		wantErr    bool
+	}{
+		{
+			name: "user updated all",
+			storage: &storageMock{
+				UserUpdateFunc: func(phone string, ur *dto.UserUpdate) error {
+					assert.Equal(t, correctPhone, phone)
+					assert.Equal(t, &loginVar, ur.Login)
+					assert.Equal(t, &loginVar, ur.Login)
+					assert.Equal(t, &birth, ur.BirthDate)
+					return nil
+				},
+			},
+			inputPhone: correctPhone,
+			inputData: &dto.UserUpdate{
+				Login:     &loginVar,
+				BirthDate: &birth,
+			},
+		},
+		{
+			name: "user updated login",
+			storage: &storageMock{
+				UserUpdateFunc: func(phone string, ur *dto.UserUpdate) error {
+					assert.Equal(t, correctPhone, phone)
+					assert.Equal(t, &loginVar, ur.Login)
+					return nil
+				},
+			},
+			inputPhone: correctPhone,
+			inputData: &dto.UserUpdate{
+				Login: &loginVar,
+			},
+		},
+		{
+			name: "user updated birth date",
+			storage: &storageMock{
+				UserUpdateFunc: func(phone string, ur *dto.UserUpdate) error {
+					assert.Equal(t, correctPhone, phone)
+					assert.Equal(t, &birth, ur.BirthDate)
+					return nil
+				},
+			},
+			inputPhone: correctPhone,
+			inputData: &dto.UserUpdate{
+				BirthDate: &birth,
+			},
+		},
+		{
+			name: "user not updated",
+			storage: &storageMock{
+				UserUpdateFunc: func(phone string, ur *dto.UserUpdate) error {
+					return errors.New(errUpdateDB)
+				},
+			},
+			inputPhone: wrongPhone,
+			inputData:  nil,
+			wantErr:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создание сервиса с моком
+			s := &Service{
+				storage: tt.storage,
+			}
+
+			// вызов тестируемой функции
+			err := s.UserUpdate(tt.inputPhone, tt.inputData)
+
+			// проверка результата
+			if tt.wantErr {
+				assert.ErrorContains(t, err, errUpdateDB)
+			} else {
+				assert.NoError(t, err)
+
+			}
+		})
+	}
+}
+
+func TestService_UserGenerateToken(t *testing.T) {
+	// возможные кейсы
+	tests := []struct {
+		name          string
+		storage       *storageMock
+		input         uuid.UUID
+		wantErr       bool
+		wantErrStatus int
+	}{
+		{
+			name: "token generated",
+			storage: &storageMock{
+				RefreshTokenSaveFunc: func(rt *models.RefreshToken) error {
+					assert.NotEmpty(t, rt.ID)
+					assert.NotEmpty(t, rt.Token)
+					assert.Equal(t, correctID, rt.UserID)
+					assert.WithinDuration(t, time.Now().Add(30*24*time.Hour), rt.ExpiresAt, 2*time.Second)
+					assert.False(t, rt.Revoked)
+					return nil
+				},
+			},
+			input: correctID,
+		},
+		{
+			name: "token not saved",
+			storage: &storageMock{
+				RefreshTokenSaveFunc: func(rt *models.RefreshToken) error {
+					return errors.New(errSaveDB)
+				},
+			},
+			input:         correctID,
+			wantErr:       true,
+			wantErrStatus: 500,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создание сервиса с моком
+			s := &Service{
+				storage: tt.storage,
+				config:  &config.Config{SecretKey: "secretkey"},
+			}
+
+			// вызов тестируемой функции
+			accessToken, err := s.UserGenerateToken(tt.input)
+
+			// проверка результата
+			if tt.wantErr {
+				assert.ErrorContains(t, err, errSaveDB)
+				assert.Equal(t, tt.wantErrStatus, err.Status)
+				assert.Empty(t, accessToken)
+			} else {
+				assert.Nil(t, err)
+				assert.NotEmpty(t, accessToken)
 			}
 		})
 	}
