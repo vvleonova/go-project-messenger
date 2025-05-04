@@ -27,6 +27,7 @@ const (
 var (
 	senderID        = uuid.New()
 	receiverID      = uuid.New()
+	chatID          = uuid.New()
 	messageFirstID  = uuid.New()
 	messageSecondID = uuid.New()
 	senderSend      = make(chan string, 10)
@@ -58,6 +59,12 @@ func TestService_HandleMessage(t *testing.T) {
 					return &models.User{
 						ID:    receiverID,
 						Phone: receiverPhone,
+					}, nil
+				},
+				ChatUsersGetFunc: func(senderID uuid.UUID, receiverID uuid.UUID) (*models.Chat, error) {
+					return &models.Chat{
+						ID:        chatID,
+						CreatedOn: time.Now(),
 					}, nil
 				},
 				MessageInsertFunc: func(u *models.Message) error {
@@ -97,6 +104,12 @@ func TestService_HandleMessage(t *testing.T) {
 						Phone: receiverPhone,
 					}, nil
 				},
+				ChatUsersGetFunc: func(senderID uuid.UUID, receiverID uuid.UUID) (*models.Chat, error) {
+					return &models.Chat{
+						ID:        chatID,
+						CreatedOn: time.Now(),
+					}, nil
+				},
 				MessageInsertFunc: func(u *models.Message) error {
 					assert.NotEmpty(t, u.ID)
 					assert.Equal(t, senderID, u.SenderID)
@@ -128,6 +141,7 @@ func TestService_HandleMessage(t *testing.T) {
 				UserGetPhoneFunc: func(phone string) (*models.User, error) {
 					return nil, fmt.Errorf(errNoUser, receiverPhone)
 				},
+				ChatUsersGetFunc:  nil,
 				MessageInsertFunc: nil,
 				MessageReadFunc:   nil,
 			},
@@ -137,6 +151,27 @@ func TestService_HandleMessage(t *testing.T) {
 			senderMessageText: fmt.Sprintf(errNoUser, receiverPhone),
 		},
 		{
+			name: "no chat id",
+			storage: &storageMock{
+				UserGetPhoneFunc: func(phone string) (*models.User, error) {
+					assert.Equal(t, receiverPhone, phone)
+					return &models.User{
+						ID:    receiverID,
+						Phone: receiverPhone,
+					}, nil
+				},
+				ChatUsersGetFunc: func(senderID uuid.UUID, receiverID uuid.UUID) (*models.Chat, error) {
+					return nil, errors.New(errNoChat)
+				},
+				MessageInsertFunc: nil,
+				MessageReadFunc:   nil,
+			},
+			clients:           &sync.Map{},
+			input:             msgRequest,
+			senderMessageGet:  true,
+			senderMessageText: fmt.Sprintf(errNoChat, senderID, receiverID),
+		},
+		{
 			name: "message is not saved to database",
 			storage: &storageMock{
 				UserGetPhoneFunc: func(phone string) (*models.User, error) {
@@ -144,6 +179,12 @@ func TestService_HandleMessage(t *testing.T) {
 					return &models.User{
 						ID:    receiverID,
 						Phone: receiverPhone,
+					}, nil
+				},
+				ChatUsersGetFunc: func(senderID uuid.UUID, receiverID uuid.UUID) (*models.Chat, error) {
+					return &models.Chat{
+						ID:        chatID,
+						CreatedOn: time.Now(),
 					}, nil
 				},
 				MessageInsertFunc: func(u *models.Message) error {

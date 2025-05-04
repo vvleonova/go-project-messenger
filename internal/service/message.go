@@ -86,7 +86,7 @@ func (s *Service) HandleMessageUnread(userConn *http.UserConn) {
 	messages, err := s.storage.MessageGetUnread(userConn.UserID)
 	if err != nil {
 		s.logger.Info(errMsgUnread, err)
-		userConn.Send <- fmt.Sprintf("%s: %s", errMsgUnread, err.Error())
+		userConn.Send <- errMsgUnread
 		return
 	}
 

@@ -8,10 +8,8 @@ import (
 
 // структура чата
 type Chat struct {
-	ID        uuid.UUID   `json:"id" db:"id"`
-	CreatedOn time.Time   `db:"created_on"`
-	UsersIDs  []uuid.UUID `json:"user_ids"`
-	Messages  []uuid.UUID `json:"messages"`
+	ID        uuid.UUID `json:"id" db:"id"`
+	CreatedOn time.Time `db:"created_on"`
 	// Photo
 }
 
